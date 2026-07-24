@@ -52,33 +52,22 @@ def load(name):
     node = loader.load_sync(Filename(name), opts)
     return NodePath(node) if node is not None else None
 
-# Use models with no JPEG textures (untextured or .rgb): the CI runtime has a
-# libjpeg version mismatch that aborts .jpg texture loading.
-ground = load("models/box.egg")  # maps/noise.rgb
-if ground is not None:
-    ground.reparent_to(render)
-    ground.set_scale(16, 16, 0.5)
-    ground.set_pos(-8, -8, -0.5)
-    ground.set_color(0.45, 0.6, 0.4, 1)
+env = load("models/environment.egg")
+if env is not None:
+    env.reparent_to(render)
+    env.set_scale(0.25)
+    env.set_pos(-8, 42, 0)
 else:
-    print("WARN: box model not found")
+    print("WARN: environment model not found")
 
-frowney = load("models/frowney.egg")  # sphere w/ face, maps/frowney.rgb
-if frowney is not None:
-    frowney.reparent_to(render)
-    frowney.set_scale(2.2)
-    frowney.set_pos(-2.5, 8, 2.2)
+panda = load("models/panda.egg")
+if panda is not None:
+    panda.reparent_to(render)
+    panda.set_scale(0.6)
+    panda.set_pos(0, 8, 0)
+    panda.set_h(200)
 else:
-    print("WARN: frowney model not found")
-
-teapot = load("models/teapot.egg")  # untextured geometry
-if teapot is not None:
-    teapot.reparent_to(render)
-    teapot.set_scale(1.6)
-    teapot.set_pos(3, 9, 0)
-    teapot.set_color(0.85, 0.7, 0.15, 1)
-else:
-    print("WARN: teapot model not found")
+    print("WARN: panda model not found")
 
 alight = AmbientLight("ambient")
 alight.set_color(LColor(0.35, 0.35, 0.4, 1))

@@ -198,7 +198,15 @@ jobs:
           # this is more reliable on macOS than DYLD_LIBRARY_PATH, which SIP
           # strips when the runner's protected bash launches the test process.
           angleRpath="-Wl,-rpath,$ANGLE_ROOT/lib"
-          angleArgs="-DEGL_INCLUDE_DIR=$ANGLE_ROOT/include -DEGL_LIBRARY=$ANGLE_ROOT/lib/libEGL.dylib -DOPENGLES2_INCLUDE_DIR=$ANGLE_ROOT/include -DOPENGLES2_LIBRARY=$ANGLE_ROOT/lib/libGLESv2.dylib -DHAVE_GLES2=YES -DHAVE_EGL=YES -DCMAKE_MODULE_LINKER_FLAGS=$angleRpath -DCMAKE_SHARED_LINKER_FLAGS=$angleRpath"
+          # The runner's homebrew libjpeg-turbo header (JPEG_LIB_VERSION 80) is
+          # pulled onto the include path via OpenSSL's /opt/homebrew/include and
+          # shadows the thirdparty jpeg 9 header, while the thirdparty jpeg 9
+          # libjpeg.a is linked -> "Wrong JPEG library version" at runtime.  Add
+          # the thirdparty jpeg include as a plain -I (searched before -isystem)
+          # so the header matches the linked library.
+          jpegInc="$GITHUB_WORKSPACE/thirdparty/darwin-libs-a/jpeg/include"
+          jpegFix="-DCMAKE_C_FLAGS=-I$jpegInc -DCMAKE_CXX_FLAGS=-I$jpegInc"
+          angleArgs="-DEGL_INCLUDE_DIR=$ANGLE_ROOT/include -DEGL_LIBRARY=$ANGLE_ROOT/lib/libEGL.dylib -DOPENGLES2_INCLUDE_DIR=$ANGLE_ROOT/include -DOPENGLES2_LIBRARY=$ANGLE_ROOT/lib/libGLESv2.dylib -DHAVE_GLES2=YES -DHAVE_EGL=YES -DCMAKE_MODULE_LINKER_FLAGS=$angleRpath -DCMAKE_SHARED_LINKER_FLAGS=$angleRpath $jpegFix"
         fi
 
         cmake
