@@ -15,6 +15,7 @@
 #define EGLGRAPHICSPIPE_H
 
 #include "pandabase.h"
+#include "config_egldisplay.h"
 
 #ifdef USE_X11
 #include "x11GraphicsPipe.h"
@@ -56,7 +57,7 @@ class eglGraphicsWindow;
  * This graphics pipe represents the interface for creating OpenGL ES graphics
  * windows on an X-based (e.g.  Unix) client.
  */
-class eglGraphicsPipe : public BaseGraphicsPipe {
+class EXPCL_EGLDISPLAY eglGraphicsPipe : public BaseGraphicsPipe {
 public:
   eglGraphicsPipe();
   virtual ~eglGraphicsPipe();

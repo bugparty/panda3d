@@ -24,17 +24,28 @@
   #error OPENGLES_1 and OPENGLES_2 cannot be defined at the same time!
 #endif
 
+// egldisplay is compiled once per GL flavor (into pandagl, pandagles or
+// pandagles2), each with a different export symbol.  EXPCL_EGLDISPLAY
+// resolves to the right one so that classes shared with the containing
+// metalib (e.g. eglGraphicsPipe, whose type handle the metalib references)
+// are exported on platforms that hide symbols by default, such as macOS.
 #ifdef OPENGLES_2
+  #define EXPCL_EGLDISPLAY EXPCL_PANDAGLES2
+
   NotifyCategoryDecl(egldisplay, EXPCL_PANDAGLES2, EXPTP_PANDAGLES2);
 
   extern EXPCL_PANDAGLES2 void init_libegldisplay();
   extern EXPCL_PANDAGLES2 const std::string get_egl_error_string(int error);
 #elif defined(OPENGLES_1)
+  #define EXPCL_EGLDISPLAY EXPCL_PANDAGLES
+
   NotifyCategoryDecl(egldisplay, EXPCL_PANDAGLES, EXPTP_PANDAGLES);
 
   extern EXPCL_PANDAGLES void init_libegldisplay();
   extern EXPCL_PANDAGLES const std::string get_egl_error_string(int error);
 #else
+  #define EXPCL_EGLDISPLAY EXPCL_PANDAGL
+
   NotifyCategoryDecl(egldisplay, EXPCL_PANDAGL, EXPTP_PANDAGL);
 
   extern EXPCL_PANDAGL void init_libegldisplay();
