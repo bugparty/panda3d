@@ -21,11 +21,46 @@
 
 #include <EGL/eglext.h>
 
+// These are defined by ANGLE's eglext.h, but not by the stock Khronos
+// headers, so define them here to allow selecting an ANGLE backend at
+// runtime regardless of which headers we were compiled against.
+#ifndef EGL_PLATFORM_ANGLE_ANGLE
+#define EGL_PLATFORM_ANGLE_ANGLE 0x3202
+#define EGL_PLATFORM_ANGLE_TYPE_ANGLE 0x3203
+#endif
+#ifndef EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE
+#define EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE 0x3208
+#endif
+#ifndef EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE
+#define EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE 0x3209
+#endif
+#ifndef EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE
+#define EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE 0x320D
+#define EGL_PLATFORM_ANGLE_TYPE_OPENGLES_ANGLE 0x320E
+#endif
+#ifndef EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE
+#define EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE 0x3450
+#endif
+#ifndef EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE
+#define EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE 0x3487
+#endif
+#ifndef EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE
+#define EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE 0x3489
+#endif
+
 static ConfigVariableInt egl_device_index
 ("egl-device-index", -1,
  PRC_DESC("Selects which EGL device index is used to create the EGL display in "
           "a headless configuration.  The special value -1 selects the default "
           "device."));
+
+static ConfigVariableString egl_angle_platform
+("egl-angle-platform", "default",
+ PRC_DESC("Selects which rendering backend ANGLE should use, if the EGL "
+          "implementation is ANGLE.  Valid values are default, metal, "
+          "vulkan, opengl, opengles, d3d11 and swiftshader.  This is "
+          "ignored if the EGL implementation does not support the "
+          "EGL_ANGLE_platform_angle extension."));
 
 TypeHandle eglGraphicsPipe::_type_handle;
 
@@ -38,6 +73,7 @@ eglGraphicsPipe() {
   vector_string extensions;
   bool supports_platform_device = false;
   bool supports_device_enumeration = false;
+  bool supports_angle_platform = false;
   const char *ext_ptr = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
   if (ext_ptr != nullptr) {
     extract_words(ext_ptr, extensions);
@@ -57,6 +93,9 @@ eglGraphicsPipe() {
     if (std::find(extensions.begin(), extensions.end(), "EGL_EXT_device_enumeration") != extensions.end()) {
       supports_device_enumeration = true;
     }
+    if (std::find(extensions.begin(), extensions.end(), "EGL_ANGLE_platform_angle") != extensions.end()) {
+      supports_angle_platform = true;
+    }
   }
   else if (egldisplay_cat.is_debug()) {
     eglGetError();
@@ -66,8 +105,73 @@ eglGraphicsPipe() {
 
   EGLint major, minor;
 
+  std::string angle_platform = egl_angle_platform.get_value();
+  if (angle_platform != "default") {
+    if (supports_angle_platform) {
+      EGLint platform_type = 0;
+      EGLint device_type = 0;
+      if (angle_platform == "metal") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE;
+      }
+      else if (angle_platform == "vulkan") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE;
+      }
+      else if (angle_platform == "opengl") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
+      }
+      else if (angle_platform == "opengles") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_OPENGLES_ANGLE;
+      }
+      else if (angle_platform == "d3d11") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE;
+      }
+      else if (angle_platform == "swiftshader") {
+        platform_type = EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE;
+        device_type = EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE;
+      }
+      else {
+        egldisplay_cat.error()
+          << "Invalid egl-angle-platform value '" << angle_platform
+          << "' (expected default, metal, vulkan, opengl, opengles, d3d11 "
+          << "or swiftshader)\n";
+      }
+
+      if (platform_type != 0) {
+        PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
+          (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+
+        if (eglGetPlatformDisplayEXT != nullptr) {
+          EGLint attribs[5];
+          int n = 0;
+          attribs[n++] = EGL_PLATFORM_ANGLE_TYPE_ANGLE;
+          attribs[n++] = platform_type;
+          if (device_type != 0) {
+            attribs[n++] = EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE;
+            attribs[n++] = device_type;
+          }
+          attribs[n] = EGL_NONE;
+
+          _egl_display = eglGetPlatformDisplayEXT(EGL_PLATFORM_ANGLE_ANGLE, nullptr, attribs);
+
+          if (_egl_display != EGL_NO_DISPLAY && !eglInitialize(_egl_display, &major, &minor)) {
+            egldisplay_cat.warning()
+              << "Couldn't initialize ANGLE " << angle_platform << " display: "
+              << get_egl_error_string(eglGetError()) << "\n";
+            _egl_display = EGL_NO_DISPLAY;
+          }
+        }
+      }
+    }
+    else if (egldisplay_cat.is_debug()) {
+      egldisplay_cat.debug()
+        << "Ignoring egl-angle-platform setting since EGL_ANGLE_platform_angle "
+        << "is not supported.\n";
+    }
+  }
+
   int index = egl_device_index.get_value();
-  if (index >= 0 && supports_platform_device && supports_device_enumeration) {
+  if (_egl_display == EGL_NO_DISPLAY &&
+      index >= 0 && supports_platform_device && supports_device_enumeration) {
     PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
       (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
 
@@ -105,7 +209,7 @@ eglGraphicsPipe() {
       }
     }
   }
-  else {
+  else if (_egl_display == EGL_NO_DISPLAY) {
     //NB. if the X11 display failed to open, _display will be 0, which is a valid
     // input to eglGetDisplay - it means to open the default display.
   #ifdef USE_X11
