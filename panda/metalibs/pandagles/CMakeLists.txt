@@ -12,12 +12,17 @@ else()
 
 endif()
 
+set(PANDAGLES_COMPONENTS p3egldisplay_gles1 p3glesgsg p3glstuff)
+if(HAVE_X11)
+  list(APPEND PANDAGLES_COMPONENTS p3x11display)
+endif()
+
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "OpenGLES1Devel")
 add_metalib(pandagles ${MODULE_TYPE}
   INCLUDE "${GLES1_PIPE_INCLUDE}"
   INIT init_libpandagles pandagles.h
   EXPORT int get_pipe_type_pandagles "${GLES1_PIPE_TYPE}::get_class_type().get_index()"
-  COMPONENTS p3egldisplay_gles1 p3glesgsg p3glstuff p3x11display)
+  COMPONENTS ${PANDAGLES_COMPONENTS})
 unset(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME)
 
 if(HAVE_X11)

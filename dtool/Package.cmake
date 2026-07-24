@@ -783,7 +783,10 @@ package_option(GL
 package_status(GL "OpenGL")
 
 # OpenGL ES 1
-if(NOT APPLE) # Apple X11 ships the GLES headers but they're broken
+# NB. Apple X11 ships broken GLES headers, so on Apple platforms we only look
+# for GLES if the user explicitly points us to an implementation (e.g. ANGLE)
+# via -DOPENGLES1_INCLUDE_DIR/-DOPENGLES1_LIBRARY.
+if(NOT APPLE OR OPENGLES1_INCLUDE_DIR)
   find_package(OpenGLES1 QUIET)
 endif()
 
@@ -794,7 +797,10 @@ package_option(GLES1
 package_status(GLES1 "OpenGL ES 1.x")
 
 # OpenGL ES 2
-if(NOT APPLE) # Apple X11 ships the GLES headers but they're broken
+# NB. Apple X11 ships broken GLES headers, so on Apple platforms we only look
+# for GLES if the user explicitly points us to an implementation (e.g. ANGLE)
+# via -DOPENGLES2_INCLUDE_DIR/-DOPENGLES2_LIBRARY.
+if(NOT APPLE OR OPENGLES2_INCLUDE_DIR)
   find_package(OpenGLES2 QUIET)
 endif()
 

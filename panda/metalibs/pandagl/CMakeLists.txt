@@ -18,7 +18,7 @@ elseif(HAVE_COCOA)
   set(PANDAGL_PIPE_INCLUDE "cocoaGLGraphicsPipe.h")
 
 elseif(HAVE_EGL)
-  list(APPEND PANDAGL_LINK_TARGETS p3egldisplay)
+  list(APPEND PANDAGL_LINK_TARGETS p3egldisplay_gl)
   set(PANDAGL_PIPE_TYPE "eglGraphicsPipe")
 
   if(HAVE_X11)

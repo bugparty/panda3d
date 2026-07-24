@@ -35,7 +35,7 @@ if(HAVE_GL AND NOT WIN32 AND NOT APPLE)
     PKG::EGL PKG::GL)
 
   if(HAVE_X11 AND NOT HAVE_GLX)
-    target_link_librarise(p3egldisplay_gl p3x11display)
+    target_link_libraries(p3egldisplay_gl p3x11display)
     target_compile_definitions(p3egldisplay_gl PUBLIC USE_X11)
   else()
     target_compile_definitions(p3egldisplay_gl PRIVATE EGL_NO_X11)
@@ -58,10 +58,11 @@ if(HAVE_GLES1)
     INIT init_libegldisplay config_egldisplay.h
     ${P3EGLDISPLAY_HEADERS} ${P3EGLDISPLAY_SOURCES})
   target_compile_definitions(p3egldisplay_gles1 PUBLIC OPENGLES_1)
-  target_link_libraries(p3egldisplay_gles1 p3glesgsg p3x11display
+  target_link_libraries(p3egldisplay_gles1 p3glesgsg
     PKG::EGL PKG::GLES1)
 
   if(HAVE_X11)
+    target_link_libraries(p3egldisplay_gles1 p3x11display)
     target_compile_definitions(p3egldisplay_gles1 PUBLIC USE_X11)
   else()
     target_compile_definitions(p3egldisplay_gles1 PRIVATE EGL_NO_X11)
@@ -84,10 +85,11 @@ if(HAVE_GLES2)
     INIT init_libegldisplay config_egldisplay.h
     ${P3EGLDISPLAY_HEADERS} ${P3EGLDISPLAY_SOURCES})
   target_compile_definitions(p3egldisplay_gles2 PUBLIC OPENGLES_2)
-  target_link_libraries(p3egldisplay_gles2 p3gles2gsg p3x11display
+  target_link_libraries(p3egldisplay_gles2 p3gles2gsg
     PKG::EGL PKG::GLES2)
 
   if(HAVE_X11)
+    target_link_libraries(p3egldisplay_gles2 p3x11display)
     target_compile_definitions(p3egldisplay_gles2 PUBLIC USE_X11)
   else()
     target_compile_definitions(p3egldisplay_gles2 PRIVATE EGL_NO_X11)
