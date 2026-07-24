@@ -160,7 +160,12 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ccache
-        key: ci-cmake-ccache-${{ matrix.profile }}
+        # Use a rolling key (run_id) with a profile-scoped restore prefix so
+        # each run restores the newest prior cache and saves a fresh one,
+        # instead of a static key that never updates after its first save.
+        key: ci-cmake-ccache-${{ matrix.profile }}-${{ github.run_id }}
+        restore-keys: |
+          ci-cmake-ccache-${{ matrix.profile }}-
 
     - name: Configure
       shell: bash
