@@ -193,7 +193,12 @@ jobs:
         fi
 
         if ${{ runner.os == 'macOS' }}; then
-          angleArgs="-DEGL_INCLUDE_DIR=$ANGLE_ROOT/include -DEGL_LIBRARY=$ANGLE_ROOT/lib/libEGL.dylib -DOPENGLES2_INCLUDE_DIR=$ANGLE_ROOT/include -DOPENGLES2_LIBRARY=$ANGLE_ROOT/lib/libGLESv2.dylib -DHAVE_GLES2=YES -DHAVE_EGL=YES"
+          # The ANGLE dylibs have install name @rpath/libEGL.dylib etc., so bake
+          # an rpath to their directory into every module/shared lib we link;
+          # this is more reliable on macOS than DYLD_LIBRARY_PATH, which SIP
+          # strips when the runner's protected bash launches the test process.
+          angleRpath="-Wl,-rpath,$ANGLE_ROOT/lib"
+          angleArgs="-DEGL_INCLUDE_DIR=$ANGLE_ROOT/include -DEGL_LIBRARY=$ANGLE_ROOT/lib/libEGL.dylib -DOPENGLES2_INCLUDE_DIR=$ANGLE_ROOT/include -DOPENGLES2_LIBRARY=$ANGLE_ROOT/lib/libGLESv2.dylib -DHAVE_GLES2=YES -DHAVE_EGL=YES -DCMAKE_MODULE_LINKER_FLAGS=$angleRpath -DCMAKE_SHARED_LINKER_FLAGS=$angleRpath"
         fi
 
         cmake
@@ -229,6 +234,11 @@ jobs:
         echo "load-display pandagles2" >> build/etc/panda3d/10_ci.prc
         echo "egl-angle-platform metal" >> build/etc/panda3d/10_ci.prc
         echo "notify-level-egldisplay debug" >> build/etc/panda3d/10_ci.prc
+        # Point Panda at this prc dir explicitly: the multi-config Xcode build
+        # puts the dtool lib under build/<config>/, so the default <auto>etc
+        # search would not necessarily land on build/etc/panda3d.  PANDA_PRC_DIR
+        # is a plain env var, so (unlike DYLD_*) it survives into the tests.
+        echo "PANDA_PRC_DIR=$GITHUB_WORKSPACE/build/etc/panda3d" >> $GITHUB_ENV
 
     - name: Build (no Python)
       if: contains(matrix.python, 'NO')
