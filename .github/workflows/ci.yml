@@ -111,6 +111,16 @@ jobs:
 
         brew install ccache
 
+        # Fetch prebuilt ANGLE so we can render headless via GLES2 -> Metal.
+        curl --retry 5 --retry-delay 10 --retry-all-errors -fLo angle-macos-universal.tar.gz \
+          https://github.com/kivy/angle-builder/releases/download/chromium-7151_rev1/angle-macos-universal.tar.gz
+        echo "b87f1d0144218a0699859340bfc9864949190d5f4b4d19d4265c3ab561fcd078  angle-macos-universal.tar.gz" | shasum -a 256 -c
+        mkdir -p thirdparty/angle/lib
+        tar -xzf angle-macos-universal.tar.gz -C thirdparty/angle
+        mv thirdparty/angle/libEGL.dylib thirdparty/angle/libGLESv2.dylib thirdparty/angle/lib/
+        rm angle-macos-universal.tar.gz
+        echo "ANGLE_ROOT=$PWD/thirdparty/angle" >> $GITHUB_ENV
+
     - name: Set up XCode (macOS)
       if: runner.os == 'macOS'
       run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
@@ -177,6 +187,10 @@ jobs:
           echo "CCACHE_DIR=$(dirname $PWD)/ccache" >> $GITHUB_ENV
         fi
 
+        if ${{ runner.os == 'macOS' }}; then
+          angleArgs="-DEGL_INCLUDE_DIR=$ANGLE_ROOT/include -DEGL_LIBRARY=$ANGLE_ROOT/lib/libEGL.dylib -DOPENGLES2_INCLUDE_DIR=$ANGLE_ROOT/include -DOPENGLES2_LIBRARY=$ANGLE_ROOT/lib/libGLESv2.dylib -DHAVE_GLES2=YES -DHAVE_EGL=YES"
+        fi
+
         cmake
         ${compilerLauncher:-}
         -D CMAKE_UNITY_BUILD=${{ matrix.unity }}
@@ -186,6 +200,7 @@ jobs:
         -D HAVE_EIGEN=${{ matrix.eigen }}
         -D STDFLOAT_DOUBLE=${{ matrix.double }}
         -D ENABLE_ASAN=${{ matrix.asan || 'NO' }}
+        ${angleArgs:-}
         ..
 
         echo "$PWD/${{ matrix.config }}/bin" >> $GITHUB_PATH
@@ -201,6 +216,14 @@ jobs:
         mkdir -p build/etc/panda3d
         echo "load-display p3headlessgl" >> build/etc/panda3d/10_ci.prc
         eglinfo || true
+
+    - name: Configure headless ANGLE (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        mkdir -p build/etc/panda3d
+        echo "load-display pandagles2" >> build/etc/panda3d/10_ci.prc
+        echo "egl-angle-platform metal" >> build/etc/panda3d/10_ci.prc
+        echo "notify-level-egldisplay debug" >> build/etc/panda3d/10_ci.prc
 
     - name: Build (no Python)
       if: contains(matrix.python, 'NO')
