@@ -239,6 +239,11 @@ jobs:
         # search would not necessarily land on build/etc/panda3d.  PANDA_PRC_DIR
         # is a plain env var, so (unlike DYLD_*) it survives into the tests.
         echo "PANDA_PRC_DIR=$GITHUB_WORKSPACE/build/etc/panda3d" >> $GITHUB_ENV
+        # The tests load models with paths like "models/misc/smiley.egg".  The
+        # multi-config Xcode build stages models under build/<config>/models,
+        # but the tests run from build/, so add the source models dir to the
+        # model-path so those loads resolve regardless of build layout.
+        echo "model-path $GITHUB_WORKSPACE" >> build/etc/panda3d/10_ci.prc
 
     - name: Build (no Python)
       if: contains(matrix.python, 'NO')
