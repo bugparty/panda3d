@@ -270,6 +270,24 @@ jobs:
       working-directory: build
       run: cmake --build . --config ${{ matrix.config }} --parallel 4
       # END A
+    - name: Render ANGLE demo (macOS)
+      if: runner.os == 'macOS' && contains(matrix.python, 'YES')
+      working-directory: build
+      shell: bash
+      continue-on-error: true
+      env:
+        PYTHONPATH: ${{ matrix.config }}
+      run: |
+        PYTHON_EXECUTABLE=$(grep 'Python_EXECUTABLE:' CMakeCache.txt | sed 's/.*=//')
+        "$PYTHON_EXECUTABLE" ../.github/scripts/render_angle_demo.py "$PWD/panda_angle_demo.png"
+    - name: Upload ANGLE demo image (macOS)
+      if: runner.os == 'macOS' && contains(matrix.python, 'YES')
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: angle-metal-demo-${{ matrix.profile }}
+        path: build/panda_angle_demo.png
+        if-no-files-found: warn
     - name: Test (Python 3.8)
       # BEGIN B
       if: contains(matrix.python, 'YES')
